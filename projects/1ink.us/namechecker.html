@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>1ink.us</title>
+    <link href="css/bootstrap-4.3.1.css" rel="stylesheet">
+  </head>
+  <body>
+   
+    <header>
+      <div class="jumbotron">
+        <div class="container">
+          <div class="row">
+            <div class="col-12">
+				 <h1 class="text-center"><img src="images/1ink.png" alt="" width="177" height="122"/></h1>
+              <h1 class="text-center">1ink.us web services</h1>
+              <p class="text-center">Save hundreds by hosting with 1ink.us!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+	
+	  <section>
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-12 mb-4 mt-2 text-center">
+			   <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+            <h2>DOMAIN NAME CHECKER</h2>
+            <p><font size="5">Address to check (www.example.com): </p>
+			  <p>
+			    <input id="dom" maxlength="42"> 
+			    <input value="Check" type="button" onclick="check()">
+		    </p>
+			  <p>&nbsp; </p>
+			  <script type="text/javascript">
+	var A = document.getElementById("dom").value;
+
+    var domain = A;
+    var apiKey = "at_sScrp7WEZJOx7HPjwc2Y1xYYLUCH7";
+
+		  function check() {
+			   $.ajax({
+            url: "https://domain-availability-api.whoisxmlapi.com/api/v1",
+            dataType: "jsonp",
+            data: {apiKey: apiKey, domainName: domain},
+            success: function(data) {
+                $("body").append("<pre>"+ JSON.stringify(data,"",2)+"</pre>");
+		  }}}
+	  </script>
+          </div>
+        </div>
+      </div>
+    
+		  
+    <div class="container">
+      <div class="row">
+        <div class="col-12 col-md-8 mx-auto">
+          <div class="jumbotron">
+            <div class="row text-center">
+              <div class="text-center col-12">
+                <h2><font size="5">Request further information:</h2>
+              </div>
+                 <div class="text-center col-12">
+              <p class="lead"> Email: <a class="btn btn-link" href="mailto://admin@1ink.us">admin@1ink.us</a>
+                  Facebook: <a class="btn btn-link" href="https://facebook.com/1ink.us">https://facebook.com/1ink.us</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="text-center">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <p>Copyright 2019 © 1ink.us. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap-4.3.1.js"></script>
+  </body>
+</html>

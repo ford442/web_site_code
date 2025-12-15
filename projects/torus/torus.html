@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Torus System with Interacting Fields (S-Pole Up)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000; /* Darker background */
+            color: #eee;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            width: 310px; /* Slightly wider */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            font-size: 1.5em;
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+        p {
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+        span.red {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        span.blue {
+            color: #0088ff;
+            font-weight: bold;
+        }
+        span.gold {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        span.silver {
+            color: #C0C0C0;
+            font-weight: bold;
+        }
+        span.white {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        /* New style for static field lines */
+        span.eddy {
+            color: #88ccff;
+            font-weight: bold;
+        }
+        span.green_purple {
+            color: #7FFF00; /* A vibrant green */
+            background: linear-gradient(to right, #7FFF00, #9400D3); /* Green to Dark Violet */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        /* New style for 2nd object's field */
+        span.yellow_cyan {
+            color: #FFFF00; /* Yellow */
+            background: linear-gradient(to right, #FFFF00, #00FFFF); /* Yellow to Cyan */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        span.interaction {
+            color: #00FFFF; /* Cyan */
+            background: linear-gradient(to right, #00FFFF, #FFFF00); /* Cyan to Yellow */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        span.interaction2 {
+            color: #FF00FF; /* Magenta */
+            background: linear-gradient(to right, #FF00FF, #FFC0CB); /* Magenta to Pink */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        span.interaction3 {
+            color: #FFA500; /* Orange */
+            font-weight: bold;
+        }
+    </style>
+
+    <!-- Reverted to traditional script includes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+</head>
+<body>
+    <div id="info">
+        <h1>Magnetic Torus System with Interacting Fields</h1>
+        <p>Dynamic visualization of particle flow and nested magnetic interactions.</p>
+        <p><span class="white">○ Central Source:</span> The translucent object creating the main field.</p>
+        <p><span class="eddy">― Field Eddies:</span> Static light blue field lines.</p>
+        <p><span class="red">■ Toroidal Flow:</span> Slower particles with shadows.</p>
+        <p><span class="blue">■ Poloidal Flow:</span> Slower particles with shadows.</p>
+        <p><span class="gold">● Orbiting Object 1:</span> Inner object with its own field.</p>
+        <p><span class="silver">● Orbiting Object 2:</span> In a farther, slower orbit.</p>
+        <p><span class="green_purple">◎ Secondary Field 1:</span> Green & purple field of Object 1.</p>
+        <p><span class="yellow_cyan">◎ Secondary Field 2:</span> Yellow & cyan field of Object 2.</p>
+        <p><span class="interaction">⚡ Field-to-Object 1:</span> Cyan & yellow arcs.</p>
+        <p><span class="interaction2">⚡ Field-to-Object 2:</span> Magenta & pink arcs.</p>
+        <p><span class="interaction3">⚡ Object-to-Object:</span> Orange arcs.</p>
+        <p><small>Click and drag to rotate. Scroll to zoom.</small></p>
+    </div>
+
+    <script>
+        // Destructure from global THREE object
+        const {
+            Scene, PerspectiveCamera, WebGLRenderer, Color, AmbientLight, DirectionalLight, PointLight,
+            TorusGeometry, SphereGeometry, Mesh, MeshPhongMaterial, MeshBasicMaterial, Group, Clock,
+            Vector3, LineBasicMaterial, Line, BufferGeometry,
+            // Added for enhanced graphics
+            HemisphereLight, MeshStandardMaterial, SpriteMaterial, Sprite, CanvasTexture
+        } = THREE;
+
+        let scene, camera, renderer, controls;
+        let mainToroidalParticlesGroup, mainPoloidalParticlesGroup;
+        let orbitingObject, orbitingObject2;
+        let secondaryToroidalParticlesGroup, secondaryPoloidalParticlesGroup;
+        let secondaryToroidalParticlesGroup2, secondaryPoloidalParticlesGroup2;
+
+        // --- New Groups for Static Field Lines ---
+        let mainStaticFieldGroup, secondaryStaticFieldGroup1, secondaryStaticFieldGroup2;
+
+        const clock = new Clock();
+
+        const mainTorusRadius = 5;
+        const mainTorusTube = 1.8;
+        const secondaryTorusRadius = 0.7;
+        const secondaryTorusTube = 0.2;
+        const secondaryTorusRadius2 = 0.5;
+        const secondaryTorusTube2 = 0.15;
+
+
+        // --- Function to create glowing sprite texture ---
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, canvas.width / 2
+            );
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            return new CanvasTexture(canvas);
+        }
+
+        function init() {
+            scene = new Scene();
+            scene.background = new Color(0x000000);
+
+            camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8, 12);
+
+            renderer = new WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new HemisphereLight(0x446688, 0x332211, 1.0));
+
+            const dirLight = new DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(5, 10, 7);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const pointLight = new PointLight(0xffffff, 0.7, 10);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            const torusGeometry = new TorusGeometry(mainTorusRadius, mainTorusTube, 32, 100);
+            const torusMaterial = new MeshStandardMaterial({
+                color: 0xaaaaaa,
+                transparent: true,
+                opacity: 0.1,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const torus = new Mesh(torusGeometry, torusMaterial);
+            torus.receiveShadow = true;
+            scene.add(torus);
+
+            const centralSourceGeom = new SphereGeometry(0.8, 32, 32);
+            const centralSourceMat = new MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.3,
+                metalness: 0.2,
+                roughness: 0.1,
+                emissive: 0x444444
+            });
+            const centralSource = new Mesh(centralSourceGeom, centralSourceMat);
+            centralSource.receiveShadow = true;
+            scene.add(centralSource);
+
+            const glowTexture = createGlowTexture();
+            const particleScale = 0.22;
+
+            // --- Particle Field Groups (Animated) ---
+            mainToroidalParticlesGroup = new Group();
+            mainPoloidalParticlesGroup = new Group();
+            secondaryToroidalParticlesGroup = new Group();
+            secondaryPoloidalParticlesGroup = new Group();
+            secondaryToroidalParticlesGroup2 = new Group();
+            secondaryPoloidalParticlesGroup2 = new Group();
+            scene.add(mainToroidalParticlesGroup, mainPoloidalParticlesGroup,
+                      secondaryToroidalParticlesGroup, secondaryPoloidalParticlesGroup,
+                      secondaryToroidalParticlesGroup2, secondaryPoloidalParticlesGroup2);
+
+            // --- Static Field Line Groups (Not Animated) ---
+            mainStaticFieldGroup = new Group();
+            secondaryStaticFieldGroup1 = new Group();
+            secondaryStaticFieldGroup2 = new Group();
+            scene.add(mainStaticFieldGroup, secondaryStaticFieldGroup1, secondaryStaticFieldGroup2);
+
+            // --- Materials for Static Lines ---
+            const staticLineMaterial = new LineBasicMaterial({
+                color: 0x88ccff, // Light blue
+                transparent: true,
+                opacity: 0.3,
+                linewidth: 1 // Note: linewidth > 1 is not guaranteed to work
+            });
+            const staticLineMaterial2 = new LineBasicMaterial({
+                color: 0x99ff99, // Light green
+                transparent: true,
+                opacity: 0.3,
+                linewidth: 1
+            });
+            const staticLineMaterial3 = new LineBasicMaterial({
+                color: 0xFFFF99, // Light yellow
+                transparent: true,
+                opacity: 0.3,
+                linewidth: 1
+            });
+
+
+            // --- Main Field ---
+            const mainToroidalParticleMat = new SpriteMaterial({
+                map: glowTexture,
+                color: 0xff0000,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mainPoloidalParticleMat = new SpriteMaterial({
+                map: glowTexture,
+                color: 0x0088ff,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mainLineCountToroidal = 10;
+            const mainParticlesPerRing = 16;
+            const mainMaxRadius = mainTorusRadius + mainTorusTube;
+            const mainMinRadius = mainTorusRadius - mainTorusTube;
+            for (let i = 0; i < mainLineCountToroidal; i++) {
+                const radius = mainMinRadius + (i / (mainLineCountToroidal - 1)) * (mainMaxRadius - mainMinRadius);
+                // Add static toroidal line
+                const circlePoints = [];
+                for (let k = 0; k <= 64; k++) {
+                    const angle = (k / 64) * Math.PI * 2;
+                    circlePoints.push(new Vector3(radius * Math.cos(angle), 0, radius * Math.sin(angle)));
+                }
+                const circleGeom = new BufferGeometry().setFromPoints(circlePoints);
+                mainStaticFieldGroup.add(new Line(circleGeom, staticLineMaterial));
+
+                // Add animated particles
+                for (let j = 0; j < mainParticlesPerRing; j++) {
+                    const particle = new Sprite(mainToroidalParticleMat);
+                    particle.scale.set(particleScale, particleScale, particleScale);
+                    particle.userData.radius = radius;
+                    particle.userData.angle = (j / mainParticlesPerRing) * Math.PI * 2;
+                    particle.userData.speed = -(0.5 / radius) * 30;
+                    particle.position.x = particle.userData.radius * Math.cos(particle.userData.angle);
+                    particle.position.z = particle.userData.radius * Math.sin(particle.userData.angle);
+                    mainToroidalParticlesGroup.add(particle);
+                }
+            }
+            const mainLineCountPoloidal = 24;
+            const mainParticlesPerLoop = 10;
+            const mainR = mainTorusRadius;
+            const mainr = mainTorusTube;
+            for (let i = 0; i < mainLineCountPoloidal; i++) {
+                const theta = (i / mainLineCountPoloidal) * Math.PI * 2;
+                // Add static poloidal line
+                const loopPoints = [];
+                for (let k = 0; k <= 64; k++) {
+                    const phi = (k / 64) * Math.PI * 2;
+                    loopPoints.push(new Vector3(
+                        (mainR + mainr * Math.cos(phi)) * Math.cos(theta),
+                        mainr * Math.sin(phi),
+                        (mainR + mainr * Math.cos(phi)) * Math.sin(theta)
+                    ));
+                }
+                const loopGeom = new BufferGeometry().setFromPoints(loopPoints);
+                mainStaticFieldGroup.add(new Line(loopGeom, staticLineMaterial));
+
+                // Add animated particles
+                for (let j = 0; j < mainParticlesPerLoop; j++) {
+                    const particle = new Sprite(mainPoloidalParticleMat);
+                    particle.scale.set(particleScale, particleScale, particleScale);
+                    particle.userData.mainAngle = theta;
+                    particle.userData.poloidalAngle = (j / mainParticlesPerLoop) * Math.PI * 2;
+                    particle.userData.speed = -2.5;
+                    const phi = particle.userData.poloidalAngle;
+                    particle.position.x = (mainR + mainr * Math.cos(phi)) * Math.cos(theta);
+                    particle.position.y = mainr * Math.sin(phi);
+                    particle.position.z = (mainR + mainr * Math.cos(phi)) * Math.sin(theta);
+                    mainPoloidalParticlesGroup.add(particle);
+                }
+            }
+
+            // Orbiting Object 1 (Gold Sphere)
+            const objectGeom = new SphereGeometry(0.3, 32, 32);
+            const objectMat = new MeshStandardMaterial({
+                color: 0xffd700,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            orbitingObject = new Mesh(objectGeom, objectMat);
+            orbitingObject.castShadow = true;
+            orbitingObject.receiveShadow = true;
+            orbitingObject.userData.mainAngle = Math.PI / 4;
+            orbitingObject.userData.poloidalAngle = Math.PI / 2;
+            orbitingObject.userData.mainOrbitSpeed = -0.3;
+            orbitingObject.userData.poloidalOrbitSpeed = -0.6;
+            scene.add(orbitingObject);
+
+            // Orbiting Object 2 (Silver Sphere)
+            const objectGeom2 = new SphereGeometry(0.2, 32, 32);
+            const objectMat2 = new MeshStandardMaterial({
+                color: 0xC0C0C0,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            orbitingObject2 = new Mesh(objectGeom2, objectMat2);
+            orbitingObject2.castShadow = true;
+            orbitingObject2.receiveShadow = true;
+            orbitingObject2.userData.mainAngle = Math.PI;
+            orbitingObject2.userData.poloidalAngle = 0;
+            orbitingObject2.userData.mainOrbitSpeed = -0.2;
+            orbitingObject2.userData.poloidalOrbitSpeed = -0.4;
+            scene.add(orbitingObject2);
+
+            // --- Secondary Field 1 (Green/Purple for Object 1) ---
+            const secondaryParticleMatGreen = new SpriteMaterial({
+                map: glowTexture,
+                color: 0x7FFF00,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.7
+            });
+            const secondaryParticleMatPurple = new SpriteMaterial({
+                map: glowTexture,
+                color: 0x9400D3,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.7
+            });
+            const secLineCountToroidal = 6;
+            const secParticlesPerRing = 10;
+            const secMaxRadius = secondaryTorusRadius + secondaryTorusTube;
+            const secMinRadius = secondaryTorusRadius - secondaryTorusTube;
+            for (let i = 0; i < secLineCountToroidal; i++) {
+                const radius = secMinRadius + (i / (secLineCountToroidal - 1)) * (secMaxRadius - secMinRadius);
+                // Add static line
+                const circlePoints = [];
+                for (let k = 0; k <= 32; k++) {
+                    const angle = (k / 32) * Math.PI * 2;
+                    circlePoints.push(new Vector3(radius * Math.cos(angle), 0, radius * Math.sin(angle)));
+                }
+                const circleGeom = new BufferGeometry().setFromPoints(circlePoints);
+                secondaryStaticFieldGroup1.add(new Line(circleGeom, staticLineMaterial2));
+                // Add particles
+                for (let j = 0; j < secParticlesPerRing; j++) {
+                    const particle = new Sprite(secondaryParticleMatGreen);
+                    particle.scale.set(particleScale * 0.8, particleScale * 0.8, particleScale * 0.8);
+                    particle.userData.radius = radius;
+                    particle.userData.angle = (j / secParticlesPerRing) * Math.PI * 2;
+                    particle.userData.speed = -(0.5 / radius) * 50;
+                    secondaryToroidalParticlesGroup.add(particle);
+                }
+            }
+            const secLineCountPoloidal = 12;
+            const secParticlesPerLoop = 8;
+            const secR = secondaryTorusRadius;
+            const secr = secondaryTorusTube;
+            for (let i = 0; i < secLineCountPoloidal; i++) {
+                const theta = (i / secLineCountPoloidal) * Math.PI * 2;
+                // Add static line
+                const loopPoints = [];
+                for (let k = 0; k <= 32; k++) {
+                    const phi = (k / 32) * Math.PI * 2;
+                    loopPoints.push(new Vector3(
+                        (secR + secr * Math.cos(phi)) * Math.cos(theta),
+                        secr * Math.sin(phi),
+                        (secR + secr * Math.cos(phi)) * Math.sin(theta)
+                    ));
+                }
+                const loopGeom = new BufferGeometry().setFromPoints(loopPoints);
+                secondaryStaticFieldGroup1.add(new Line(loopGeom, staticLineMaterial2));
+                // Add particles
+                for (let j = 0; j < secParticlesPerLoop; j++) {
+                    const particle = new Sprite(secondaryParticleMatPurple);
+                    particle.scale.set(particleScale * 0.8, particleScale * 0.8, particleScale * 0.8);
+                    particle.userData.mainAngle = theta;
+                    particle.userData.poloidalAngle = (j / secParticlesPerLoop) * Math.PI * 2;
+                    particle.userData.speed = -3.5;
+                    secondaryPoloidalParticlesGroup.add(particle);
+                }
+            }
+
+            // --- Secondary Field 2 (Yellow/Cyan for Object 2) ---
+            const secondaryParticleMatYellow = new SpriteMaterial({
+                map: glowTexture,
+                color: 0xFFFF00, // Yellow
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.7
+            });
+            const secondaryParticleMatCyan = new SpriteMaterial({
+                map: glowTexture,
+                color: 0x00FFFF, // Cyan
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.7
+            });
+            const sec2LineCountToroidal = 5;
+            const sec2ParticlesPerRing = 8;
+            const sec2MaxRadius = secondaryTorusRadius2 + secondaryTorusTube2;
+            const sec2MinRadius = secondaryTorusRadius2 - secondaryTorusTube2;
+            for (let i = 0; i < sec2LineCountToroidal; i++) {
+                const radius = sec2MinRadius + (i / (sec2LineCountToroidal - 1)) * (sec2MaxRadius - sec2MinRadius);
+                // Add static line
+                const circlePoints = [];
+                for (let k = 0; k <= 32; k++) {
+                    const angle = (k / 32) * Math.PI * 2;
+                    circlePoints.push(new Vector3(radius * Math.cos(angle), 0, radius * Math.sin(angle)));
+                }
+                const circleGeom = new BufferGeometry().setFromPoints(circlePoints);
+                secondaryStaticFieldGroup2.add(new Line(circleGeom, staticLineMaterial3));
+                // Add particles
+                for (let j = 0; j < sec2ParticlesPerRing; j++) {
+                    const particle = new Sprite(secondaryParticleMatYellow);
+                    particle.scale.set(particleScale * 0.7, particleScale * 0.7, particleScale * 0.7);
+                    particle.userData.radius = radius;
+                    particle.userData.angle = (j / sec2ParticlesPerRing) * Math.PI * 2;
+                    particle.userData.speed = -(0.5 / radius) * 40;
+                    secondaryToroidalParticlesGroup2.add(particle);
+                }
+            }
+            const sec2LineCountPoloidal = 10;
+            const sec2ParticlesPerLoop = 6;
+            const sec2R = secondaryTorusRadius2;
+            const sec2r = secondaryTorusTube2;
+            for (let i = 0; i < sec2LineCountPoloidal; i++) {
+                const theta = (i / sec2LineCountPoloidal) * Math.PI * 2;
+                // Add static line
+                const loopPoints = [];
+                for (let k = 0; k <= 32; k++) {
+                    const phi = (k / 32) * Math.PI * 2;
+                    loopPoints.push(new Vector3(
+                        (sec2R + sec2r * Math.cos(phi)) * Math.cos(theta),
+                        sec2r * Math.sin(phi),
+                        (sec2R + sec2r * Math.cos(phi)) * Math.sin(theta)
+                    ));
+                }
+                const loopGeom = new BufferGeometry().setFromPoints(loopPoints);
+                secondaryStaticFieldGroup2.add(new Line(loopGeom, staticLineMaterial3));
+                // Add particles
+                for (let j = 0; j < sec2ParticlesPerLoop; j++) {
+                    const particle = new Sprite(secondaryParticleMatCyan);
+                    particle.scale.set(particleScale * 0.7, particleScale * 0.7, particleScale * 0.7);
+                    particle.userData.mainAngle = theta;
+                    particle.userData.poloidalAngle = (j / sec2ParticlesPerLoop) * Math.PI * 2;
+                    particle.userData.speed = -3.0;
+                    secondaryPoloidalParticlesGroup2.add(particle);
+                }
+            }
+
+
+            // --- Interaction Lines ---
+            scene.userData.interactionLines = [];
+            const interactionMaterialCyan = new LineBasicMaterial({ color: 0x00FFFF, transparent: true, opacity: 0.9, linewidth: 2 });
+            const interactionMaterialYellow = new LineBasicMaterial({ color: 0xFFFF00, transparent: true, opacity: 0.9, linewidth: 2 });
+            for (let i = 0; i < 10; i++) {
+                const points = [new Vector3(), new Vector3()];
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const lineCyan = new Line(geometry, interactionMaterialCyan);
+                const lineYellow = new Line(geometry, interactionMaterialYellow);
+                scene.userData.interactionLines.push({ cyan: lineCyan, yellow: lineYellow, phase: Math.random() * Math.PI * 2 });
+                scene.add(lineCyan);
+                scene.add(lineYellow);
+            }
+            scene.userData.interactionLinesToObj2 = [];
+            const interactionMaterialMagenta = new LineBasicMaterial({ color: 0xFF00FF, transparent: true, opacity: 0.9, linewidth: 2 });
+            const interactionMaterialPink = new LineBasicMaterial({ color: 0xFFC0CB, transparent: true, opacity: 0.9, linewidth: 2 });
+            for (let i = 0; i < 10; i++) {
+                const points = [new Vector3(), new Vector3()];
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const lineMagenta = new Line(geometry, interactionMaterialMagenta);
+                const linePink = new Line(geometry, interactionMaterialPink);
+                scene.userData.interactionLinesToObj2.push({ magenta: lineMagenta, pink: linePink, phase: Math.random() * Math.PI * 2 });
+                scene.add(lineMagenta);
+                scene.add(linePink);
+            }
+            scene.userData.interactionLinesBetweenObjects = [];
+            const interactionMaterialOrange = new LineBasicMaterial({ color: 0x0FFA500, transparent: true, opacity: 0.9, linewidth: 1.5 });
+             for (let i = 0; i < 6; i++) {
+                const points = [new Vector3(), new Vector3()];
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const lineOrange = new Line(geometry, interactionMaterialOrange);
+                scene.userData.interactionLinesBetweenObjects.push({ orange: lineOrange, phase: Math.random() * Math.PI * 2 });
+                scene.add(lineOrange);
+            }
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            // Animate Main Toroidal Particles
+            mainToroidalParticlesGroup.children.forEach(particle => {
+                particle.userData.angle += particle.userData.speed * delta;
+                particle.position.x = particle.userData.radius * Math.cos(particle.userData.angle);
+                particle.position.z = particle.userData.radius * Math.sin(particle.userData.angle);
+            });
+
+            // Animate Main Poloidal Particles
+            const mainR = mainTorusRadius;
+            const mainr = mainTorusTube;
+            mainPoloidalParticlesGroup.children.forEach(particle => {
+                particle.userData.poloidalAngle += particle.userData.speed * delta;
+                const theta = particle.userData.mainAngle;
+                const phi = particle.userData.poloidalAngle;
+                particle.position.x = (mainR + mainr * Math.cos(phi)) * Math.cos(theta);
+                particle.position.y = mainr * Math.sin(phi);
+                particle.position.z = (mainR + mainr * Math.cos(phi)) * Math.sin(theta);
+            });
+
+            // Animate Orbiting Object 1
+            orbitingObject.userData.mainAngle += orbitingObject.userData.mainOrbitSpeed * delta;
+            orbitingObject.userData.poloidalAngle += orbitingObject.userData.poloidalOrbitSpeed * delta;
+            const objectTheta = orbitingObject.userData.mainAngle;
+            const objectPhi = orbitingObject.userData.poloidalAngle;
+            const objectR = mainTorusRadius;
+            const objectr = mainTorusTube * 0.75; // Inner orbit
+            orbitingObject.position.x = (objectR + objectr * Math.cos(objectPhi)) * Math.cos(objectTheta);
+            orbitingObject.position.y = objectr * Math.sin(objectPhi);
+            orbitingObject.position.z = (objectR + objectr * Math.cos(objectPhi)) * Math.sin(objectTheta);
+            scene.children.find(obj => obj.isPointLight).position.copy(orbitingObject.position);
+
+            // --- Move Static and Animated Field for Object 1 ---
+            secondaryStaticFieldGroup1.position.copy(orbitingObject.position);
+            secondaryToroidalParticlesGroup.position.copy(orbitingObject.position);
+            secondaryPoloidalParticlesGroup.position.copy(orbitingObject.position);
+
+            // Animate Orbiting Object 2
+            orbitingObject2.userData.mainAngle += orbitingObject2.userData.mainOrbitSpeed * delta;
+            orbitingObject2.userData.poloidalAngle += orbitingObject2.userData.poloidalOrbitSpeed * delta;
+            const objectTheta2 = orbitingObject2.userData.mainAngle;
+            const objectPhi2 = orbitingObject2.userData.poloidalAngle;
+            const objectR2 = mainTorusRadius;
+            const objectr2 = mainTorusTube * 1.05; // Farther orbit
+            orbitingObject2.position.x = (objectR2 + objectr2 * Math.cos(objectPhi2)) * Math.cos(objectTheta2);
+            orbitingObject2.position.y = objectr2 * Math.sin(objectPhi2);
+            orbitingObject2.position.z = (objectR2 + objectr2 * Math.cos(objectPhi2)) * Math.sin(objectTheta2);
+
+            // --- Move Static and Animated Field for Object 2 ---
+            secondaryStaticFieldGroup2.position.copy(orbitingObject2.position);
+            secondaryToroidalParticlesGroup2.position.copy(orbitingObject2.position);
+            secondaryPoloidalParticlesGroup2.position.copy(orbitingObject2.position);
+
+            // Animate Secondary Toroidal Particles (local to group)
+            secondaryToroidalParticlesGroup.children.forEach(particle => {
+                particle.userData.angle += particle.userData.speed * delta;
+                particle.position.x = particle.userData.radius * Math.cos(particle.userData.angle);
+                particle.position.z = particle.userData.radius * Math.sin(particle.userData.angle);
+                particle.position.y = 0; // Keep flat in group's xz plane
+            });
+
+            // Animate Secondary Poloidal Particles (local to group)
+            const secR = secondaryTorusRadius;
+            const secr = secondaryTorusTube;
+            secondaryPoloidalParticlesGroup.children.forEach(particle => {
+                particle.userData.poloidalAngle += particle.userData.speed * delta;
+                const theta = particle.userData.mainAngle;
+                const phi = particle.userData.poloidalAngle;
+                particle.position.x = (secR + secr * Math.cos(phi)) * Math.cos(theta);
+                particle.position.y = secr * Math.sin(phi);
+                particle.position.z = (secR + secr * Math.cos(phi)) * Math.sin(theta);
+            });
+
+            // Animate Field for Object 2 (Toroidal - local)
+            secondaryToroidalParticlesGroup2.children.forEach(particle => {
+                particle.userData.angle += particle.userData.speed * delta;
+                particle.position.x = particle.userData.radius * Math.cos(particle.userData.angle);
+                particle.position.z = particle.userData.radius * Math.sin(particle.userData.angle);
+                particle.position.y = 0;
+            });
+
+            // Animate Field for Object 2 (Poloidal - local)
+            const sec2R = secondaryTorusRadius2;
+            const sec2r = secondaryTorusTube2;
+            secondaryPoloidalParticlesGroup2.children.forEach(particle => {
+                particle.userData.poloidalAngle += particle.userData.speed * delta;
+                const theta = particle.userData.mainAngle;
+                const phi = particle.userData.poloidalAngle;
+                particle.position.x = (sec2R + sec2r * Math.cos(phi)) * Math.cos(theta);
+                particle.position.y = sec2r * Math.sin(phi);
+                particle.position.z = (sec2R + sec2r * Math.cos(phi)) * Math.sin(theta);
+            });
+
+
+            // Animate Interaction Visuals (Field -> Object 1)
+            scene.userData.interactionLines.forEach(lineData => {
+                lineData.phase += delta * 3;
+                const intensity = (Math.sin(lineData.phase) * 0.5 + 0.5);
+                if (intensity > 0.1) {
+                    const mainFieldPoint = new Vector3(
+                        Math.cos(lineData.phase * 0.4 + lineData.phase) * (mainTorusRadius * 0.8),
+                        Math.sin(lineData.phase * 0.6 + lineData.phase) * (mainTorusTube * 1.5),
+                        Math.cos(lineData.phase * 0.8 + lineData.phase) * (mainTorusRadius * 0.8)
+                    );
+                    const secondaryFieldPoint = new Vector3(
+                        orbitingObject.position.x + Math.cos(lineData.phase * 0.7) * secondaryTorusRadius,
+                        orbitingObject.position.y + Math.sin(lineData.phase * 1.1) * secondaryTorusTube,
+                        orbitingObject.position.z + Math.cos(lineData.phase * 0.9) * secondaryTorusRadius
+                    );
+                    const positionsCyan = lineData.cyan.geometry.attributes.position.array;
+                    mainFieldPoint.toArray(positionsCyan, 0);
+                    secondaryFieldPoint.toArray(positionsCyan, 3);
+                    lineData.cyan.geometry.attributes.position.needsUpdate = true;
+                    lineData.cyan.material.opacity = intensity * 0.9;
+                    lineData.cyan.visible = true;
+                    const positionsYellow = lineData.yellow.geometry.attributes.position.array;
+                    secondaryFieldPoint.toArray(positionsYellow, 0);
+                    mainFieldPoint.toArray(positionsYellow, 3);
+                    lineData.yellow.geometry.attributes.position.needsUpdate = true;
+                    lineData.yellow.material.opacity = intensity * 0.7;
+                    lineData.yellow.visible = true;
+                } else {
+                    lineData.cyan.visible = false;
+                    lineData.yellow.visible = false;
+                }
+            });
+
+            // Animate Interaction Visuals (Field -> Object 2)
+            scene.userData.interactionLinesToObj2.forEach(lineData => {
+                lineData.phase += delta * 2.5;
+                const intensity = (Math.sin(lineData.phase) * 0.5 + 0.5);
+                if (intensity > 0.1) {
+                    const mainFieldPoint = new Vector3(
+                        Math.cos(lineData.phase * 0.5 + lineData.phase) * (mainTorusRadius * 1.1),
+                        Math.sin(lineData.phase * 0.7 + lineData.phase) * (mainTorusTube * 1.5),
+                        Math.cos(lineData.phase * 0.9 + lineData.phase) * (mainTorusRadius * 1.1)
+                    );
+                    const object2Point = new Vector3(
+                        orbitingObject2.position.x + Math.cos(lineData.phase * 0.8) * 0.2,
+                        orbitingObject2.position.y + Math.sin(lineData.phase * 1.2) * 0.2,
+                        orbitingObject2.position.z + Math.cos(lineData.phase * 1.0) * 0.2
+                    );
+                    const positionsMagenta = lineData.magenta.geometry.attributes.position.array;
+                    mainFieldPoint.toArray(positionsMagenta, 0);
+                    object2Point.toArray(positionsMagenta, 3);
+                    lineData.magenta.geometry.attributes.position.needsUpdate = true;
+                    lineData.magenta.material.opacity = intensity * 0.9;
+                    lineData.magenta.visible = true;
+                    const positionsPink = lineData.pink.geometry.attributes.position.array;
+                    object2Point.toArray(positionsPink, 0);
+                    mainFieldPoint.toArray(positionsPink, 3);
+                    lineData.pink.geometry.attributes.position.needsUpdate = true;
+                    lineData.pink.material.opacity = intensity * 0.7;
+                    lineData.pink.visible = true;
+                } else {
+                    lineData.magenta.visible = false;
+                    lineData.pink.visible = false;
+                }
+            });
+
+             // Animate Interaction Visuals (Object 1 -> Object 2)
+             scene.userData.interactionLinesBetweenObjects.forEach(lineData => {
+                lineData.phase += delta * 4;
+                const intensity = (Math.sin(lineData.phase) * 0.5 + 0.5);
+                if (intensity > 0.5) {
+                    const object1Point = orbitingObject.position;
+                    const object2Point = orbitingObject2.position;
+
+                    const positionsOrange = lineData.orange.geometry.attributes.position.array;
+                    object1Point.toArray(positionsOrange, 0);
+                    object2Point.toArray(positionsOrange, 3);
+                    lineData.orange.geometry.attributes.position.needsUpdate = true;
+                    lineData.orange.material.opacity = intensity * 0.8;
+                    lineData.orange.visible = true;
+                } else {
+                    lineData.orange.visible = false;
+                }
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>

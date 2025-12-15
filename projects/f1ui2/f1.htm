@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<link rel="stylesheet" charset="UTF-8" href="https://css.1ink.us/b3hd16.css"/>
+	<link rel="stylesheet" href="./style.css">
+
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+	<title>WebGL Fluid Experiment</title>
+
+	<meta id="viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<meta name="apple-mobile-web-app-capable" content="yes">
+
+
+	<script type="text/javascript" src="./GLFluid.js"></script>
+
+	<script>
+
+
+		window.addEventListener ("touchmove", function (event) { event.preventDefault (); }, false);
+		if (typeof window.devicePixelRatio != 'undefined' && window.devicePixelRatio > 2) {
+			var meta = document.getElementById ("viewport");
+			meta.setAttribute ('content', 'width=device-width, initial-scale=' + (2 / window.devicePixelRatio) + ', user-scalable=no');
+		}
+
+
+	</script>
+
+	<style>
+		html,body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+		#content {
+			background: #000000;
+			width: 100%;
+			height: 100%;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+			cursor: pointer;
+		}
+
+	</style>
+
+	<!-- Icon Font -->
+	<link rel="stylesheet" type="text/css" href="iconfont.css">
+	<!-- Open Graph Meta -->
+	<meta property="og:title" content="WebGL Fluid Experiment" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/" />
+	<meta property="og:image" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/glfluid.jpg" />
+	<!-- / -->
+	<!-- Additional dat.GUI styling -->
+	<style>
+	/* green left border for selects */
+	.dg .cr.object{
+		border-left: 3px solid #5CB36D;
+	}
+
+	/* disabled row style */
+	.dg .cr.disabled{
+		border-left-color: #353535 !important;
+	}
+	.dg .cr input[disabled]{
+		background: none !important;
+		color: #8C8C8C !important;
+	}
+
+	/* new row type: link */
+	.dg .cr.link, .dg .cr.link .property-name, .dg .cr.link *{
+		cursor: pointer;
+	}
+
+	.dg .cr.link:hover{
+		background: #111;
+	}
+
+	.dg .cr.footer, .dg .cr.footer .property-name, .dg .cr.footer *{
+		font-size: 110%;
+	}
+
+	/* new row type: footer */
+	.dg .cr.footer{
+		color: #939699;
+		transition: color 0.2s;
+	}
+	.dg .cr.footer:hover{
+		color: #2FA1D6;
+		transition: color 0.2s;
+	}
+
+	/* row icon */
+	.dg .cr [class^="icon-"], [class*=" icon-"]{
+		font-size: 150%;
+		float: right;
+		text-align: center;
+		width: 27px;
+	}
+	</style>
+	<script type="text/javascript" src="./dat.gui.min.js"></script>
+	<script>
+	  //Google Analytics
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-54755897-1', 'auto');
+	  ga('send', 'pageview');
+	</script>
+</head>
+<body>
+
+
+	<div id="content"></div>
+
+	<script type="text/javascript">
+		lime.embed ("content", 0, 0, "FFFFFF");
+	</script>
+
+	<canvas class="emscripten" id="mvi" oncontextmenu="event.preventDefault()" style="cursor:url(cursor.cur),auto;"></canvas>
+	<div id="footer">
+		<textarea class="emscripten" id="output" rows=5></textarea>
+	</div>
+	<h3>by ArthurSonzogni</h3>
+	<div id="ihig" hidden>
+	</div>
+	<div id="di" hidden>
+	</div>
+	<div id="dis" hidden>
+	</div>
+	<div id="iwid" hidden>
+	</div>
+	<div id="shut" hidden>
+		1
+	</div>
+	<input type="checkbox" id="di" hidden/>
+	<iframe src="./bezz.htm" style="border-width:0px;position:absolute;top:0px;left:0px;right:0px;bottom:0px;overflow:hidden;z-index:999996;display:block;overflow-y:hidden;overflow-x:hidden;pointer-events: none;" id="circle" title="Mask">
+	</iframe>
+	<input type="button" id="btn" style="background-color:green;position: absolute;display:block;left:5%;top:50%;z-index:999997;border:5px solid #e7e7e7;border-radius:30%;">
+	</input>
+</body>
+<script>
+	let hi = window.innerHeight;
+	let wi = window.innerWidth;
+	document.getElementById("ihig").innerHTML = hi;
+	document.getElementById("iwid").innerHTML = wi;
+	document.getElementById('btn').addEventListener('click', function() {
+		var bz = new BroadcastChannel('bez');
+		bz.postMessage({data: 222});
+		document.getElementById("di").click();
+		document.getElementById("circle").width = wi;
+		document.getElementById("circle").height = window.innerHeight;
+		document.getElementById('mvi').width=window.innerHeight;
+		document.getElementById('mvi').height=window.innerHeight;
+	});
+	setTimeout(function(){
+		document.getElementById('btn').click();
+	},1500);
+</script>
+</body>
+</html>

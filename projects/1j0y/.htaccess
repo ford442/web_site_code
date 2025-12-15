@@ -1,0 +1,17 @@
+DirectoryIndex 1ink.1ink
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+AddType application/wasm wasm
+AddType 'text/html;charset=UTF-8' 1ink
+AddType 'application/x-javascript; charset=UTF-8' 1ijs
+AddType 'text/css;charset=UTF-8' 1iss
+AddOutputFilterByType DEFLATE application/wasm
+<IfModule mod_headers.c>
+Header set Accept-Ranges bytes
+Header set Cross-Origin-Opener-Policy: same-origin
+Header set Cross-Origin-Embedder-Policy: credentialless
+Header set Access-Control-Allow-Origin "*"
+Header set Cross-Origin-Resource-Policy: same-site
+</IfModule>
+
